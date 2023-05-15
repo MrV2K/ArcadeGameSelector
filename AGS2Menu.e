@@ -101,6 +101,8 @@ CONST RAWKEY_DOWN   = 77
 CONST RAWKEY_RIGHT  = 78
 CONST RAWKEY_LEFT   = 79
 CONST RAWKEY_RETURN = 68
+CONST RAWKEY_HOME   = 70
+
 
 PROC select(init_offset, init_pos) OF ags
     DEF key
@@ -142,8 +144,48 @@ PROC select(init_offset, init_pos) OF ags
                 IF self.conf.blue_button_action = AGSCONF_ACTION_QUIT
                     quit := TRUE
                 ENDIF
-            ENDIF
+           ENDIF
         ENDIF
+
+        -> Home
+
+        IF rawkey = 70
+            index := 0
+            item := self.nav.items[index]
+            IF item.type = AGSNAV_TYPE_DIR
+                IF self.nav.depth AND (index = 0) -> Go to parent dir.
+                    StrCopy(path, self.nav.path)
+                    pos := EstrLen(path) - 1
+                    len := 0
+                    REPEAT
+                        DEC pos
+                        INC len
+                    UNTIL (path[pos] = "/") OR (path[pos] = ":")
+                    INC pos
+                    RightStr(prev_item, path, len)
+                    SetStr(prev_item, len - 5)
+                    path[pos] := 0
+                    SetStr(path, pos)
+                        self.current_item := 0
+                        should_redraw := 1
+                    self.nav.set_path(path)
+                    self.nav.depth := self.nav.depth - 1
+                    self.reload(0, 0, prev_item)
+                    screenshot_ctr := 0
+                ELSEIF self.nav.depth < 6
+                    StrCopy(path, self.nav.path)
+                    StrAdd(path, item.name)
+                    StrAdd(path, '.ags/')
+                    self.nav.set_path(path)
+                    self.nav.depth := self.nav.depth + 1
+                    self.reload()
+                    screenshot_ctr := 0
+                ENDIF
+            ENDIF
+            REPEAT
+                rawkey := GetKey() AND $ffff
+            UNTIL rawkey <> 70
+        ENDIF       
 
         -> Up / Down
         IF (portstate AND JPF_JOY_UP) OR (rawkey = RAWKEY_UP)
